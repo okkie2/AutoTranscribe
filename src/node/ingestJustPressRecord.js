@@ -76,7 +76,8 @@ async function handleFile(filePath) {
   const baseName = path.basename(filePath);
   const destName = `${dateFolder}_${baseName}`;
   const destPath = path.join(DEST_ROOT, destName);
-  const tempPath = path.join(DEST_ROOT, `.tmp_${destName}`);
+  // Use a PID-scoped temp filename to avoid clashes if multiple ingesters run.
+  const tempPath = path.join(DEST_ROOT, `.tmp_${process.pid}_${destName}`);
 
   console.log("New JPR recording detected:", filePath);
   try {

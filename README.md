@@ -139,6 +139,7 @@ What it does:
 Start both ingest (Just Press Record) and watcher together:
 
 ```
+cd ~/Code/AutoTranscribe/src/node
 npm run start:local
 ```
 
@@ -147,6 +148,7 @@ This runs the Just Press Record ingester and the transcription watcher side by s
 Replace Shortcuts ingestion with the built-in sync watcher:
 
 ```
+cd ~/Code/AutoTranscribe/src/node
 node ingestJPR.js
 ```
 
