@@ -1,52 +1,43 @@
 // src/node/watcher.js
-// Watches the recordings directory for new audio files and triggers follow-up
-// processing (currently just logging; hook in transcription later).
+// Watches the recordings directory for new audio files, passes them to the
+// transcriber, and marks processed files so they are not re-run.
 
-const path = require('path');
 const chokidar = require('chokidar');
-const ensureDirectories = require('./ensureDirectories');
-const transcribe = require('./transcriber');
+const ensureDirectories = require('./ensureDirectories')
+const createQueue = require("./queue");
+const jobTranscribe = require("./jobTranscribe");
+const config = require("./config");
 
+
+// Prepare folders.
 ensureDirectories();
 console.log("Folder check complete.");
 
-var RECORDINGS_DIR = '/Users/joostokkinga/Documents/AutoTranscribe/recordings';
+const RECORDINGS_DIR = config.recordings;
+const SUMMARIES_DIR = config.summaries;
 
 console.log('Watching for new audio files in:', RECORDINGS_DIR);
+console.log('Watching for new text files in:', SUMMARIES_DIR);
 
-// Initialize a chokidar watcher to react only to new files (ignore existing).
-var watcher = chokidar.watch(RECORDINGS_DIR, {
-  ignored: /(^|[\/\\])\../,     // ignore dotfiles
+// Queue: every item is a filePath; jobTranscribe handles the full lifecycle
+// (validation, transcription, rename) so the watcher stays focused on events.
+let queue = createQueue(function(filePath) {
+  return jobTranscribe(filePath);
+});
+
+console.log("Watching:", RECORDINGS_DIR);
+
+let watcher = chokidar.watch(RECORDINGS_DIR, {
+  ignored: /(^|[\/\\])\../,
   persistent: true,
-  ignoreInitial: true           // only react to *new* files
+  ignoreInitial: true
 });
 
-watcher.on('add', function (filePath) {
-  var ext = path.extname(filePath).toLowerCase();
-  var base = path.basename(filePath);
-
-  // 1. Skip already-processed files
-  var alreadyDone = base.indexOf("_transcribed") !== -1;
-  if (alreadyDone) {
-    console.log("Skipping already-transcribed file:", filePath);
-    return;
-  }
-
- // 2. Only process .m4a
-  if (ext === '.m4a') {
-    console.log("New m4a recording detected:", filePath);
-
-    // 3. Run the transcription
-    transcribe(filePath, function (success, outputPath) {
-      if (success) {
-        console.log("Transcription finished:", outputPath);
-      } else {
-        console.log("Transcription FAILED for:", filePath);
-      }
-    });
-  }
+watcher.on('add', function(filePath) {
+  console.log("New file detected:", filePath);
+  queue.add(filePath);
 });
 
-watcher.on('error', function (error) {
-  console.error('Watcher error:', error);
+watcher.on('error', function(err) {
+  console.error("Watcher error:", err);
 });
