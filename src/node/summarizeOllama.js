@@ -7,27 +7,16 @@ const path = require("path");
 const fetch = require("node-fetch");
 const config = require("./config");
 
-const transcriptionsDir = config.transcriptions;
-const summariesDir = config.summaries;
 const summarizerCfg = config.summarizer;
 
 /**
  * Summarize a single transcription file via Ollama.
  * @param {string} transcriptionPath absolute path to a .txt file
- * @returns {Promise<string>} resolves to summary output path
+ * @returns {Promise<{summary: string, title: string, titleSlug: string}>}
  */
 async function summarizeFile(transcriptionPath) {
   if (!transcriptionPath.endsWith(".txt")) {
-    return "";
-  }
-
-  const base = path.basename(transcriptionPath, ".txt");
-  const outPath = path.join(summariesDir, `${base}_summarised.txt`);
-
-  // Skip if already summarized.
-  if (fs.existsSync(outPath)) {
-    console.log("Summary exists, skipping:", outPath);
-    return outPath;
+    return { summary: "", title: "", titleSlug: "" };
   }
 
   const text = fs.readFileSync(transcriptionPath, "utf8");
@@ -53,10 +42,32 @@ async function summarizeFile(transcriptionPath) {
   const data = await res.json();
   const summary = data.response || "";
 
-  fs.mkdirSync(summariesDir, { recursive: true });
-  fs.writeFileSync(outPath, summary, "utf8");
-  console.log("Saved summary to:", outPath);
-  return outPath;
+  // Extract title from the first line starting with "Titel:" (case-insensitive).
+  let title = "";
+  const firstLine = summary.split("\n").find((line) => /titel:/i.test(line));
+  if (firstLine) {
+    title = firstLine.replace(/titel:/i, "").trim();
+  }
+  // Fallback: if no title, derive from first non-empty summary line (first 1-5 words).
+  if (!title) {
+    const lines = summary
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length > 0) {
+      title = lines[0].split(/\s+/).slice(0, 5).join(" ");
+    }
+  }
+  let titleSlug = "";
+  if (title) {
+    titleSlug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 50);
+  }
+
+  return { summary, title, titleSlug };
 }
 
 module.exports = summarizeFile;

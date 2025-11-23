@@ -33,8 +33,9 @@ let directories = {
     model: "llama3.1:8b-instruct-q4_K_M",
     temperature: 0.2,
     prompt: [
-      "Vat samen in het Nederlands, maximaal 120 woorden.",
-      "Voeg een laatste regel toe: 'Acties:' gevolgd door bullets of 'Geen'.",
+      "Eerste regel exact: 'Titel: <1-5 woorden>'. Geen andere tekst op die regel.",
+      "Daarna de samenvatting in het Nederlands, max 120 woorden, met bullets.",
+      "Sluit af met 'Acties:' gevolgd door bullets of 'Geen'.",
       "Transcript:",
     ].join("\n"),
     endpoint: "http://127.0.0.1:11434/api/generate"

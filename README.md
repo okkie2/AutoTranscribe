@@ -147,6 +147,7 @@ What it does:
   - triggers Python transcription
   - saves `.txt` output
   - renames the audio with `_transcribed` so it is not reprocessed
+  - enqueues a summary job for the transcript (Ollama)
 
 Start both ingest (Just Press Record) and watcher together:
 
@@ -170,8 +171,10 @@ This monitors Just Press Record in iCloud (`~/Library/Mobile Documents/iCloud~co
 
 - Summaries run automatically after transcription; `jobTranscribe.js` calls `summarizeOllama.js`.
 - Paths, model, prompt, temperature, and endpoint live in `src/node/config.js` under `summarizer`.
-- Summaries are written to `~/Documents/AutoTranscribe/summaries/` as `<name>_summarised.txt`.
+- Summaries are written to `~/Documents/AutoTranscribe/summaries/` as `<name>_summary_<topic>.txt` (topic comes from the generated title).
+- After summarizing, the transcript is renamed to `<name>_summarised.txt`.
 - Requires a local Ollama model (default: `ollama pull llama3.1:8b-instruct-q4_K_M`) and the Ollama service running (`brew services start ollama`).
+- Only run one watcher/launch agent at a time to avoid duplicate processing.
 
 ### Autostart on login (macOS)
 
