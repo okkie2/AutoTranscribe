@@ -1,5 +1,10 @@
-var path = require('path');
-var chokidar = require('chokidar');
+const path = require('path');
+const chokidar = require('chokidar');
+const ensureDirectories = require('./ensureDirectories');
+const { lstat } = require('fs');
+
+ensureDirectories();
+console.log("Folder check complete.");
 
 var RECORDINGS_DIR = '/Users/joostokkinga/Documents/AutoTranscribe/recordings';
 
@@ -17,11 +22,10 @@ watcher.on('add', function (filePath) {
   if (ext === '.m4a') {
     console.log('New m4a recording detected:', filePath);
     // later: transcribe(filePath)
-  } else {
-    console.log('New file ignored:', filePath);
-  }
+  } 
 });
 
 watcher.on('error', function (error) {
   console.error('Watcher error:', error);
 });
+
