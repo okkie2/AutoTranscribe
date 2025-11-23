@@ -154,6 +154,67 @@ node ingestJPR.js
 
 This monitors Just Press Record in iCloud (`~/Library/Mobile Documents/iCloud~com~openplanetsoftware~just-press-record/Documents`), flattens dated folders into `YYYY-MM-DD_HH-MM-SS.m4a`, copies them into `/recordings`, and removes the source file/folder. Paths live in `src/node/config.js`.
 
+### Autostart on login (macOS)
+
+Use a launchd job so the ingester + watcher run after login without a terminal:
+
+```
+# Create the launch agent (one-time)
+cat <<'PLIST' > ~/Library/LaunchAgents/com.autotranscribe.startlocal.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.autotranscribe.startlocal</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/joostokkinga/Code/AutoTranscribe/src/node && npm run start:local</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/joostokkinga/Code/AutoTranscribe/src/node</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/autotranscribe.startlocal.out</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/autotranscribe.startlocal.err</string>
+</dict>
+</plist>
+PLIST
+
+# Load (or reload after edits)
+launchctl unload -w ~/Library/LaunchAgents/com.autotranscribe.startlocal.plist 2>/dev/null
+launchctl load -w ~/Library/LaunchAgents/com.autotranscribe.startlocal.plist
+
+# Tail logs if needed
+tail -f /tmp/autotranscribe.startlocal.out /tmp/autotranscribe.startlocal.err
+```
+
+To stop autostart for a session, unload the plist. To permanently remove it, delete the plist and unload it.
+
+**Recommended single-agent setup**
+- Keep only one launch agent to avoid duplicate watchers. Use the direct Node agent already installed at `~/Library/LaunchAgents/nl.joost.autotranscribe.start.plist`.
+- Disable other autotranscribe launch agents (if present) and reload the main one:
+
+```
+launchctl unload -w ~/Library/LaunchAgents/com.autotranscribe.startlocal.plist 2>/dev/null
+launchctl unload -w ~/Library/LaunchAgents/com.autotranscribe.sync.plist 2>/dev/null
+launchctl unload -w ~/Library/LaunchAgents/nl.joost.autotranscribe.start.plist
+launchctl load  -w ~/Library/LaunchAgents/nl.joost.autotranscribe.start.plist
+```
+
+Logs for this agent: `~/Library/Logs/autotranscribe.out.log` and `~/Library/Logs/autotranscribe.err.log`.
+
 ---
 
 ## 🧱 5. Architecture Overview
