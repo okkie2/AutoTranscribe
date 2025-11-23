@@ -17,13 +17,24 @@ This project lets you:
 ```
 AutoTranscribe/
 │
+├── models/                     # Whisper models cache
+├── temp/                       # Temporary working files
+├── test/                       # Integration tests for the Node watcher
+├── venv/                       # Python virtual environment (not checked in)
 ├── src/
 │   ├── python/
 │   │   ├── transcribe.py        # Faster-Whisper (CPU) version
 │   │   └── transcribe_mlx.py    # MLX Whisper (Metal) version
 │   │
 │   └── node/
-│       ├── watcher.js           # Watches a folder and triggers scripts
+│       ├── config.js            # Centralized paths + binaries
+│       ├── ensureDirectories.js # Creates required folders
+│       ├── ingestJustPressRecord.js # iCloud JPR ingestion + flatten
+│       ├── jobTranscribe.js     # Single-file transcription/rename
+│       ├── queue.js             # Simple async queue
+│       ├── startAll.js          # Launches ingester + watcher
+│       ├── transcriber.js       # Node → Python MLX Whisper bridge
+│       ├── watcher.js           # Watches /recordings for new files
 │       ├── package.json
 │       └── package-lock.json
 │
