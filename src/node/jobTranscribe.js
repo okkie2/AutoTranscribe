@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs");
 const transcribe = require("./transcriber");
 
-function jobTranscribe(filePath) {
+function jobTranscribe(filePath, summaryQueue) {
   return new Promise(function(resolve) {
     let ext = path.extname(filePath).toLowerCase();
     let base = path.basename(filePath);
@@ -44,11 +44,17 @@ function jobTranscribe(filePath) {
       const baseNoExt = path.basename(filePath, ext);
       const newPath = dir + "/" + baseNoExt + "_transcribed" + ext;
 
-      fs.rename(filePath, newPath, function(err) {
+      fs.rename(filePath, newPath, async function(err) {
         if (err) {
           console.log("ERROR renaming file:", err);
-        } else {
-          console.log("File renamed:", newPath);
+          resolve();
+          return;
+        }
+
+        console.log("File renamed:", newPath);
+        // Enqueue summary job (idempotent).
+        if (summaryQueue) {
+          summaryQueue.add(outputPath);
         }
         resolve();
       });

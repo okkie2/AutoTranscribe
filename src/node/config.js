@@ -25,7 +25,20 @@ let directories = {
 
   // Code environment directories
   pythonBin: home + "/Code/AutoTranscribe/venv/bin/python3",
-  pythonScriptMLX: home + "/Code/AutoTranscribe/src/python/transcribe_mlx.py"
+  pythonScriptMLX: home + "/Code/AutoTranscribe/src/python/transcribe_mlx.py",
+
+  // Summarizer (Ollama) settings
+  summarizer: {
+    // Model must exist locally in Ollama (`ollama pull ...`).
+    model: "llama3.1:8b-instruct-q4_K_M",
+    temperature: 0.2,
+    prompt: [
+      "Vat samen in het Nederlands, maximaal 120 woorden.",
+      "Voeg een laatste regel toe: 'Acties:' gevolgd door bullets of 'Geen'.",
+      "Transcript:",
+    ].join("\n"),
+    endpoint: "http://127.0.0.1:11434/api/generate"
+  }
 };
 
 // Make code available.

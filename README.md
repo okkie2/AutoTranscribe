@@ -31,6 +31,7 @@ AutoTranscribe/
 │       ├── ensureDirectories.js # Creates required folders
 │       ├── ingestJustPressRecord.js # iCloud JPR ingestion + flatten
 │       ├── jobTranscribe.js     # Single-file transcription/rename
+│       ├── jobSummarize.js      # Queue job to summarize transcripts
 │       ├── queue.js             # Simple async queue
 │       ├── startAll.js          # Launches ingester + watcher
 │       ├── transcriber.js       # Node → Python MLX Whisper bridge
@@ -164,6 +165,13 @@ node ingestJPR.js
 ```
 
 This monitors Just Press Record in iCloud (`~/Library/Mobile Documents/iCloud~com~openplanetsoftware~just-press-record/Documents`), flattens dated folders into `YYYY-MM-DD_HH-MM-SS.m4a`, copies them into `/recordings`, and removes the source file/folder. Paths live in `src/node/config.js`.
+
+## 📝 8. Local Summaries (Ollama)
+
+- Summaries run automatically after transcription; `jobTranscribe.js` calls `summarizeOllama.js`.
+- Paths, model, prompt, temperature, and endpoint live in `src/node/config.js` under `summarizer`.
+- Summaries are written to `~/Documents/AutoTranscribe/summaries/` as `<name>_summarised.txt`.
+- Requires a local Ollama model (default: `ollama pull llama3.1:8b-instruct-q4_K_M`) and the Ollama service running (`brew services start ollama`).
 
 ### Autostart on login (macOS)
 

@@ -6,6 +6,7 @@ const chokidar = require('chokidar');
 const ensureDirectories = require('./ensureDirectories')
 const createQueue = require("./queue");
 const jobTranscribe = require("./jobTranscribe");
+const jobSummarize = require("./jobSummarize");
 const config = require("./config");
 
 
@@ -19,10 +20,14 @@ const SUMMARIES_DIR = config.summaries;
 console.log('Watching for new audio files in:', RECORDINGS_DIR);
 console.log('Watching for new text files in:', SUMMARIES_DIR);
 
-// Queue: every item is a filePath; jobTranscribe handles the full lifecycle
-// (validation, transcription, rename) so the watcher stays focused on events.
-let queue = createQueue(function(filePath) {
-  return jobTranscribe(filePath);
+// Queues: transcription and summarization are separate so a slow summary does
+// not block ingestion. Both jobs are idempotent.
+let summaryQueue = createQueue(function(filePath) {
+  return jobSummarize(filePath);
+});
+
+let transcribeQueue = createQueue(function(filePath) {
+  return jobTranscribe(filePath, summaryQueue);
 });
 
 console.log("Watching:", RECORDINGS_DIR);
@@ -35,7 +40,7 @@ let watcher = chokidar.watch(RECORDINGS_DIR, {
 
 watcher.on('add', function(filePath) {
   console.log("New file detected:", filePath);
-  queue.add(filePath);
+  transcribeQueue.add(filePath);
 });
 
 watcher.on('error', function(err) {
