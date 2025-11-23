@@ -1,15 +1,25 @@
+# transcribe_mlx.py
+import sys
 import mlx_whisper
 
-AUDIO = "/Users/joostokkinga/Documents/AutoTranscribe/testrecording/2025-11-21_14-00-02.m4a"
+# 1. Read arguments passed from Node
+input_audio = sys.argv[1]
+output_txt = sys.argv[2]
 
 print("Starting MLX Whisper transcription (multilingual turbo)…")
+print("Input:", input_audio)
+print("Output:", output_txt)
 
+# 2. Run MLX Whisper
 result = mlx_whisper.transcribe(
-    AUDIO,
+    input_audio,
     path_or_hf_repo="mlx-community/whisper-large-v3-turbo",
-    language="nl",  # force correct decoding
+    language="nl",  # optionally force Dutch
     condition_on_previous_text=False
 )
 
-print("\n--- TRANSCRIPTION ---\n")
-print(result["text"])
+# 3. Write transcript to .txt
+with open(output_txt, "w", encoding="utf-8") as f:
+    f.write(result["text"])
+
+print("Done.")
