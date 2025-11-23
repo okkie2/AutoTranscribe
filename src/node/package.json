@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run test:integration",
-    "test:integration": "node test/integration-watcher.js"
+    "test:integration": "node test/integration-watcher.js",
+    "ingest:jpr": "node ingestJustPressRecord.js",
+    "start:local": "node startAll.js"
   },
   "keywords": [],
   "author": "",

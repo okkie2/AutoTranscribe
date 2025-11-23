@@ -37,16 +37,4 @@ function transcribe(inputFilePath, callback) {
     callback(ok, outputFilePath);
   });
 }
-// TEST BLOCK
-// module → the current file
-// require.main → the file that started the program
-if (require.main === module) {
-  let testInput = directories.testrecording + "/2025-11-21_14-00-02.m4a";
-
-  transcribe(testInput, function(success, outputFilePath) {
-    console.log("Success?", success);
-    console.log("Transcript saved to:", outputFilePath);
-  });
-}
-
 module.exports = transcribe;

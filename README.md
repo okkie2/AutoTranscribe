@@ -130,13 +130,27 @@ node watcher.js
 
 What it does:
 
-- Watches a folder (e.g., iCloud/Just Press Record)
+- Watches the `/recordings` folder
 - When a new file arrives:
-  - copies & renames it
   - triggers Python transcription
   - saves `.txt` output
+  - renames the audio with `_transcribed` so it is not reprocessed
 
-You can modify paths directly inside `watcher.js`.
+Start both ingest (Just Press Record) and watcher together:
+
+```
+npm run start:local
+```
+
+This runs the Just Press Record ingester and the transcription watcher side by side. Leave the terminal open while it runs. If you only need the ingester, run `npm run ingest:jpr`. Paths live in `src/node/config.js`.
+
+Replace Shortcuts ingestion with the built-in sync watcher:
+
+```
+node ingestJPR.js
+```
+
+This monitors Just Press Record in iCloud (`~/Library/Mobile Documents/iCloud~com~openplanetsoftware~just-press-record/Documents`), flattens dated folders into `YYYY-MM-DD_HH-MM-SS.m4a`, copies them into `/recordings`, and removes the source file/folder. Paths live in `src/node/config.js`.
 
 ---
 

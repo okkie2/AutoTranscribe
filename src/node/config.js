@@ -20,7 +20,8 @@ let directories = {
   recordings: projectRoot + "/recordings",
   transcriptions: projectRoot + "/transcriptions",
   summaries: projectRoot + "/summaries",
-  testrecording: projectRoot + "/testrecording",
+  // Source from Just Press Record (iCloud)
+  jprSourceRoot: home + "/Library/Mobile Documents/iCloud~com~openplanetsoftware~just-press-record/Documents",
 
   // Code environment directories
   pythonBin: home + "/Code/AutoTranscribe/venv/bin/python3",

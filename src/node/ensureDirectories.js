@@ -16,8 +16,7 @@ function ensureDirectories() {
     config.projectRoot,
     config.recordings,
     config.transcriptions,
-    config.summaries,
-    config.testrecording
+    config.summaries
   ];
 
   for (let i = 0; i < dirs.length; i++) {
