@@ -142,34 +142,20 @@ You can modify paths directly inside `watcher.js`.
 
 ## 🧱 5. Architecture Overview
 
-```
-                +------------------------------+
-                |   Watched Folder (iCloud)    |
-                |   e.g. Just Press Record     |
-                +------------------------------+
-                               |
-                               | New file event
-                               v
-                     +------------------+
-                     | node watcher.js  |
-                     +------------------+
-                               |
-                               | Calls Python script
-                               v
-                +-----------------------------------+
-                |   Python Transcriber (choose):    |
-                |   - transcribe.py  (CPU)          |
-                |   - transcribe_mlx.py (Metal)     |
-                +-----------------------------------+
-                               |
-                               | Writes output
-                               v
-                +------------------------------+
-                | /transcriptions/output.txt    |
-                +------------------------------+
+```mermaid
+flowchart TD
 
-```
+    A[Watched Folder - iCloud / Just Press Record]
+        -->|New file event| B[node watcher.js]
 
+    B -->|Calls Python script| C{Python Transcriber}
+
+    C -->|CPU| C1[transcribe.py]
+    C -->|Metal| C2[transcribe_mlx.py]
+
+    C1 --> D[/transcriptions/output.txt/]
+    C2 --> D[/transcriptions/output.txt/]
+```
 ---
 
 ## 🧪 6. Quick Test
