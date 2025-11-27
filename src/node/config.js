@@ -32,11 +32,28 @@ let directories = {
     // Model must exist locally in Ollama (`ollama pull ...`).
     model: "llama3.1:8b-instruct-q4_K_M",
     temperature: 0.2,
+    // Multi-pass: first clean + extract title, then summarize with a budget.
+    cleanerPrompt: [
+      "You will receive a transcript. Fix spelling, grammar, and wrong word choices in context (even if the word itself is valid).",
+      "Keep meaning and order; very light rephrasing for clarity is allowed, but do not drop or change meaning.",
+      "Leave uncertain parts unchanged; pick the most probable correct wording.",
+      "Respond only as JSON with keys 'title' (1-5 words) and 'cleaned_transcript'. No extra text.",
+      "Use the output language: {{OUTPUT_LANG}}."
+    ].join("\n"),
     prompt: [
-      "Eerste regel exact: 'Titel: <1-5 woorden>'. Geen andere tekst op die regel.",
-      "Daarna de samenvatting in het Nederlands, max 120 woorden, met bullets.",
-      "Sluit af met 'Acties:' gevolgd door bullets of 'Geen'.",
-      "Transcript:",
+      "Produce valid Markdown in the output language: {{OUTPUT_LANG}}. Use '*' for bullets (not '-').",
+      "",
+      "Line 1: '# <title (1-5 words)>' (do not include the word 'topic'). Then one blank line.",
+      "Prefer the detected title: {{TOPIC}}.",
+      "Title must reflect the core of the conversation; avoid vague or generic words.",
+      "",
+      "Use headings translated to the output language with the same meaning as 'Summary' and 'Transcript' (e.g., '## Summary' / '## Transcript'); one blank line before and after each heading.",
+      "",
+      "'## Summary' (translated): use subheadings (###) with bullets. Target length: about {{SUMMARY_WORD_TARGET}} words.",
+      "Focus on key points, main ideas, facts, and notable names/numbers (no meeting-specific actions required).",
+      "",
+      "'## Transcript': include the full, cleaned transcript below without omissions or shortening.",
+      "Use exactly the cleaned transcript provided. No paraphrasing or summarizing."
     ].join("\n"),
     endpoint: "http://127.0.0.1:11434/api/generate"
   }

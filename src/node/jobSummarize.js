@@ -1,16 +1,70 @@
 // src/node/jobSummarize.js
-// Idempotent summarization job: given a transcript path, generate a summary
-// via local Ollama and write <name>_summarised.txt to the summaries folder.
+// Idempotent summarization job. Flow order:
+// 1) validate path (must be under transcriptions/)
+// 2) skip if a summary already exists
+// 3) call summarizeOllama to clean + summarize + derive title/slug
+// 4) write summary Markdown
+// 5) write cleaned transcript to <name>_summarised.txt
 
 const fs = require("fs");
 const path = require("path");
 const summarizeOllama = require("./summarizeOllama");
 const config = require("./config");
+const logger = require("./logger");
+
+function findSummaryForBase(normalizedBase) {
+  try {
+    const entries = fs
+      .readdirSync(config.summaries, { withFileTypes: true })
+      .filter((d) => d.isFile())
+      .map((d) => d.name);
+    return entries.find((name) => name.startsWith(normalizedBase) && name.endsWith(".md"));
+  } catch (_) {
+    return null;
+  }
+}
+
+function appendTopic(baseName, topicSlug) {
+  if (!topicSlug) return baseName;
+  if (baseName.endsWith(`_${topicSlug}`)) return baseName;
+  return `${baseName}_${topicSlug}`;
+}
+
+function findAndRenameAudio(baseBase, topicSlug) {
+  try {
+    const files = fs
+      .readdirSync(config.recordings, { withFileTypes: true })
+      .filter((d) => d.isFile())
+      .map((d) => d.name);
+
+    logger.info("Audio rename: scanning recordings for base", baseBase, "topic", topicSlug);
+
+    const candidate = files.find((name) => {
+      const stem = path.basename(name, path.extname(name));
+      return stem === baseBase;
+    });
+    if (!candidate) return;
+
+    const ext = path.extname(candidate);
+    const currentPath = path.join(config.recordings, candidate);
+    const desiredStem = appendTopic(baseBase, topicSlug);
+    const desiredName = `${desiredStem}${ext}`;
+    logger.info("Audio rename: candidate", candidate, "desired", desiredName);
+    if (candidate === desiredName) return;
+
+    const desiredPath = path.join(config.recordings, desiredName);
+    fs.renameSync(currentPath, desiredPath);
+    logger.info("Renamed audio to:", desiredPath);
+  } catch (err) {
+    logger.error("Could not rename audio with topic:", err.message);
+  }
+}
 
 function jobSummarize(transcriptionPath) {
   return new Promise(async (resolve) => {
     try {
       if (!transcriptionPath || !transcriptionPath.endsWith(".txt")) {
+        logger.info("Skipping non-transcript path:", transcriptionPath);
         resolve();
         return;
       }
@@ -27,74 +81,80 @@ function jobSummarize(transcriptionPath) {
       const base = path.basename(transcriptionPath, ".txt");
       const normalizedBase = base.replace(/_summarised$/, "");
       const transcriptDir = path.dirname(transcriptionPath);
-      const finalTranscriptPath = path.join(transcriptDir, `${normalizedBase}_summarised.txt`);
 
-      // Helper: check if a summary for this base already exists.
-      function findExistingSummary() {
-        try {
-          return fs
-            .readdirSync(config.summaries, { withFileTypes: true })
-            .filter((d) => d.isFile())
-            .map((d) => d.name)
-            .find(
-              (name) =>
-                name.startsWith(`${normalizedBase}_summary`) &&
-                name.endsWith(".txt")
-            );
-        } catch (_) {
-          return "";
-        }
-      }
-
-      let existingSummary = findExistingSummary();
-
-      // If summary exists, rename transcript if needed and stop; don't write a new summary.
-      if (existingSummary) {
-        const existingPath = path.join(config.summaries, existingSummary);
-        console.log("Summary already present, skipping new write:", existingPath);
-        if (!fs.existsSync(finalTranscriptPath)) {
-          try {
-            fs.renameSync(transcriptionPath, finalTranscriptPath);
-            console.log("Renamed transcript to:", finalTranscriptPath);
-          } catch (renameErr) {
-            console.log("Could not rename transcript:", renameErr.message);
-          }
-        }
+      // If any summary for this base already exists, skip entirely to avoid loops on renamed files.
+      const preExisting = findSummaryForBase(normalizedBase);
+      if (preExisting) {
+        logger.info("Skipping: summary already exists for base", normalizedBase, "->", preExisting);
         resolve();
         return;
       }
 
       // Otherwise, generate summary, save, then rename transcript.
-      const { summary, title, titleSlug } = await summarizeOllama(transcriptionPath);
+      const { summary, title, titleSlug, cleanedTranscript, language } = await summarizeOllama(transcriptionPath);
+      logger.info("Topic resolved for transcript", {
+        transcript: transcriptionPath,
+        topic: titleSlug || "",
+        rawTitle: title,
+        titleSlug
+      });
 
-      const topicPart = titleSlug ? `_summary_${titleSlug}` : `_summary`;
-      const summaryPath = path.join(config.summaries, `${normalizedBase}${topicPart}.txt`);
+      const topicPart = titleSlug || "";
+      const baseWithTopic = appendTopic(normalizedBase, topicPart);
+      logger.info("Summarize naming:", {
+        base,
+        normalizedBase,
+        topicPart,
+        baseWithTopic
+      });
+
+      const desiredSummaryName = `${baseWithTopic}.md`;
+      const summaryPath = path.join(config.summaries, desiredSummaryName);
+      const desiredTranscriptPath = path.join(transcriptDir, `${baseWithTopic}.txt`);
+
+      if (fs.existsSync(summaryPath)) {
+        logger.info("Skipping: summary file already exists:", summaryPath);
+        resolve();
+        return;
+      }
 
       fs.mkdirSync(config.summaries, { recursive: true });
       fs.writeFileSync(summaryPath, summary, "utf8");
-      console.log("Saved summary to:", summaryPath);
+      logger.info("Saved summary to:", summaryPath);
       // Log snapshot of summaries for debugging.
       try {
         const entries = fs
           .readdirSync(config.summaries, { withFileTypes: true })
           .filter((d) => d.isFile())
           .map((d) => d.name);
-        console.log("Summaries now:", entries.join(", "));
+        logger.info("Summaries now:", entries.join(", "));
       } catch (_) {}
 
-      // Rename transcript after summarizing, if not already.
-      if (!transcriptionPath.endsWith("_summarised.txt")) {
-        try {
-          fs.renameSync(transcriptionPath, finalTranscriptPath);
-          console.log("Renamed transcript to:", finalTranscriptPath);
-        } catch (renameErr) {
-          console.log("Could not rename transcript:", renameErr.message);
+      // Rename the original transcript to include the topic, then write the cleaned copy.
+      try {
+        if (transcriptionPath !== desiredTranscriptPath) {
+          fs.renameSync(transcriptionPath, desiredTranscriptPath);
         }
+      } catch (renameErr) {
+        logger.error("Could not rename transcript before writing cleaned copy:", renameErr.message);
+      }
+
+      try {
+        const transcriptContent = cleanedTranscript || fs.readFileSync(desiredTranscriptPath, "utf8");
+        fs.writeFileSync(desiredTranscriptPath, transcriptContent, "utf8");
+        logger.info("Wrote cleaned transcript to:", desiredTranscriptPath);
+      } catch (writeErr) {
+        logger.error("Could not write cleaned transcript:", writeErr.message);
+      }
+
+      // Best-effort: rename the source audio to include the topic.
+      if (topicPart) {
+        findAndRenameAudio(normalizedBase, topicPart);
       }
 
       resolve();
     } catch (err) {
-      console.log("Summary job failed:", err.message);
+      logger.error("Summary job failed:", err.message);
       resolve();
     }
   });
